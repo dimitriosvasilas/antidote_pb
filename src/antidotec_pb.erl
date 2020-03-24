@@ -136,6 +136,21 @@ read_objects(Pid, Objects, Transaction) ->
 
 -spec read_values(Pid::term(), Objects::[term()], TxId::term()) -> {ok, [term()]}  | {error, term()}.
 read_values(Pid, Objects, {interactive, TxId}) ->
+    EncMsg = antidote_pb_codec:encode(read_map_keys_range, {Objects, TxId}),
+    Result = antidotec_pb_socket:call_infinity(Pid, {req, EncMsg, ?TIMEOUT}),
+    case Result of
+        {error, timeout} -> {error, timeout};
+        _ ->
+            case antidote_pb_codec:decode_response(Result) of
+                {read_objects, Values} ->
+                    {ok, Values};
+                {error, Reason} -> {error, Reason};
+                Other -> {error, Other}
+            end
+    end;
+
+-spec read_values(Pid::term(), Objects::[term()], TxId::term()) -> {ok, [term()]}  | {error, term()}.
+read_values(Pid, Objects, {interactive, TxId}) ->
     EncMsg = antidote_pb_codec:encode(read_objects, {Objects, TxId}),
     Result = antidotec_pb_socket:call_infinity(Pid, {req, EncMsg, ?TIMEOUT}),
     case Result of
